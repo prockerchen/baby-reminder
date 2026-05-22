@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+# 注意：profile.enc 是加密档案，必须提交到仓库供 GitHub Actions 使用，不要在这里排除！
+profile.json
+*.log
+.DS_Store
+# 工作记忆（本地内部笔记，不应进仓库）
+.workbuddy/

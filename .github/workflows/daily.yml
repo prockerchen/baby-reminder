@@ -1,0 +1,49 @@
+name: Daily Baby Reminder
+
+on:
+  schedule:
+    # 每小时第 5 分钟跑一次（避开 GitHub 整点高峰，触发更准时）
+    - cron: '5 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '忽略时间检查，直接推送（用于手动测试）'
+        required: false
+        default: 'false'
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check push time (skip unless current hour matches profile)
+        id: gate
+        if: github.event.inputs.force != 'true'
+        env:
+          BABY_PROFILE_KEY: ${{ secrets.BABY_PROFILE_KEY }}
+        run: |
+          python check_time.py
+        continue-on-error: true
+
+      - name: Send daily message
+        if: github.event.inputs.force == 'true' || steps.gate.outcome == 'success'
+        env:
+          BABY_PROFILE_KEY: ${{ secrets.BABY_PROFILE_KEY }}
+          WECOM_CORP_ID: ${{ secrets.WECOM_CORP_ID }}
+          WECOM_AGENT_ID: ${{ secrets.WECOM_AGENT_ID }}
+          WECOM_SECRET: ${{ secrets.WECOM_SECRET }}
+          WECOM_TOUSER: ${{ secrets.WECOM_TOUSER }}
+          WECOM_WEBHOOK_KEY: ${{ secrets.WECOM_WEBHOOK_KEY }}
+        run: |
+          python main.py
