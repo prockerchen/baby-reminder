@@ -61,13 +61,15 @@ def _send_webhook(text: str) -> dict[str, Any]:
 
 
 def send(text: str) -> dict[str, Any]:
-    """根据环境变量自动选择推送方式。"""
-    if os.environ.get("WECOM_CORP_ID") and os.environ.get("WECOM_SECRET"):
-        return _send_app_message(text)
+    """根据环境变量自动选择推送方式。
+    优先级：webhook > 应用消息（webhook 配置最简单、IP 不受限）
+    """
     if os.environ.get("WECOM_WEBHOOK_KEY"):
         return _send_webhook(text)
+    if os.environ.get("WECOM_CORP_ID") and os.environ.get("WECOM_SECRET"):
+        return _send_app_message(text)
     raise WeComError(
         "没有配置任何企微推送凭证。请设置以下任一组环境变量：\n"
-        "  应用消息: WECOM_CORP_ID + WECOM_AGENT_ID + WECOM_SECRET (+ WECOM_TOUSER)\n"
-        "  群机器人: WECOM_WEBHOOK_KEY"
+        "  群机器人（推荐）: WECOM_WEBHOOK_KEY\n"
+        "  应用消息: WECOM_CORP_ID + WECOM_AGENT_ID + WECOM_SECRET (+ WECOM_TOUSER)"
     )
