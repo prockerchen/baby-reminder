@@ -3,10 +3,15 @@
 支持两种模式（环境变量自动选择）：
 1. 自建应用消息（推荐 1v1 体验）：需要 WECOM_CORP_ID / WECOM_AGENT_ID / WECOM_SECRET / WECOM_TOUSER
 2. 群机器人 webhook（最简单）：需要 WECOM_WEBHOOK_KEY
+
+群机器人支持图片消息（base64 + md5）。
 """
 from __future__ import annotations
 
+import base64
+import hashlib
 import os
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -49,10 +54,9 @@ def _send_app_message(text: str) -> dict[str, Any]:
     return data
 
 
-def _send_webhook(text: str) -> dict[str, Any]:
+def _webhook_post(payload: dict) -> dict[str, Any]:
     key = os.environ["WECOM_WEBHOOK_KEY"]
     url = f"{WECOM_API}/webhook/send?key={key}"
-    payload = {"msgtype": "text", "text": {"content": text}}
     resp = requests.post(url, json=payload, timeout=10)
     data = resp.json()
     if data.get("errcode") != 0:
@@ -60,13 +64,44 @@ def _send_webhook(text: str) -> dict[str, Any]:
     return data
 
 
-def send(text: str) -> dict[str, Any]:
+def _send_webhook_text(text: str) -> dict[str, Any]:
+    return _webhook_post({"msgtype": "text", "text": {"content": text}})
+
+
+def _send_webhook_image(image_path: str) -> dict[str, Any]:
+    """发送图片消息。企微限制：单图 2MB 以内，仅支持 jpg/png。"""
+    p = Path(image_path)
+    if not p.exists():
+        raise WeComError(f"图片不存在: {image_path}")
+    raw = p.read_bytes()
+    if len(raw) > 2 * 1024 * 1024:
+        raise WeComError(f"图片超过 2MB，需压缩: {image_path} ({len(raw)} bytes)")
+    b64 = base64.b64encode(raw).decode("ascii")
+    md5 = hashlib.md5(raw).hexdigest()
+    return _webhook_post({
+        "msgtype": "image",
+        "image": {"base64": b64, "md5": md5}
+    })
+
+
+def send(text: str, image_path: str | None = None) -> dict[str, Any]:
     """根据环境变量自动选择推送方式。
-    优先级：webhook > 应用消息（webhook 配置最简单、IP 不受限）
+    优先级：webhook > 应用消息
+
+    如果提供了 image_path，会先发图片再发文字（webhook 模式下）。
     """
     if os.environ.get("WECOM_WEBHOOK_KEY"):
-        return _send_webhook(text)
+        results = {}
+        if image_path:
+            try:
+                results["image"] = _send_webhook_image(image_path)
+            except Exception as e:
+                # 图片发失败不阻止文本
+                results["image_error"] = str(e)
+        results["text"] = _send_webhook_text(text)
+        return results
     if os.environ.get("WECOM_CORP_ID") and os.environ.get("WECOM_SECRET"):
+        # 应用消息暂不支持图片，只发文本（图片需要先上传素材，私人项目省略）
         return _send_app_message(text)
     raise WeComError(
         "没有配置任何企微推送凭证。请设置以下任一组环境变量：\n"

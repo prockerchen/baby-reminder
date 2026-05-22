@@ -3,8 +3,8 @@
 环境变量：
 - BABY_PROFILE_KEY：解密档案的密钥（必须）
 - 企微推送凭证（任一组）：
+  - WECOM_WEBHOOK_KEY（推荐，群机器人，无 IP 限制）
   - WECOM_CORP_ID + WECOM_AGENT_ID + WECOM_SECRET + WECOM_TOUSER
-  - WECOM_WEBHOOK_KEY
 - DRY_RUN=1：仅打印不真发，便于调试
 """
 from __future__ import annotations
@@ -31,24 +31,24 @@ def main() -> int:
         return 1
 
     if not profile:
-        print("[ERROR] 没有找到档案。请先在本地运行 `python -m src.onboarding` 完成首次设置，"
-              "并把生成的 profile.enc 提交到仓库。", file=sys.stderr)
+        print("[ERROR] 没有找到档案。请先生成 profile.enc 并提交到仓库。", file=sys.stderr)
         return 1
 
     today = date.today()
-    week, msg = pick_today_message(profile, today)
-    text = render(profile, week, msg, today)
+    week, day, msg, image_path = pick_today_message(profile, today)
+    text = render(profile, week, day, msg, today)
 
     print("=== 今日消息 ===")
     print(text)
-    print("=== 风格 ===", msg.get("style", "未知"))
+    if image_path:
+        print(f"\n[配图] {image_path}")
 
     if os.environ.get("DRY_RUN") == "1":
         print("\n[DRY_RUN] 不实际发送。")
         return 0
 
     try:
-        result = send(text)
+        result = send(text, image_path)
         print(f"\n[OK] 已推送: {result}")
         return 0
     except Exception as e:
