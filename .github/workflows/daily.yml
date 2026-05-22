@@ -1,5 +1,8 @@
 name: Daily Baby Reminder
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   schedule:
     # 每小时第 5 分钟跑一次（避开 GitHub 整点高峰，触发更准时）
