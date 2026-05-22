@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宝宝提醒 · 设置</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #ffeef5 0%, #fff5e6 100%);
+    margin: 0; padding: 24px 16px; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    color: #333;
+  }
+  .card {
+    background: #fff; border-radius: 20px; padding: 28px 24px;
+    max-width: 420px; width: 100%;
+    box-shadow: 0 10px 40px rgba(220, 100, 130, 0.12);
+  }
+  h1 { font-size: 22px; margin: 0 0 6px; color: #d85a82; font-weight: 600; }
+  .sub { color: #999; font-size: 13px; margin-bottom: 24px; line-height: 1.6; }
+  .field { margin-bottom: 20px; }
+  label { display: block; font-size: 14px; color: #555; margin-bottom: 8px; font-weight: 500; }
+  input, select {
+    width: 100%; padding: 12px 14px; border: 1.5px solid #f0d6dd; border-radius: 12px;
+    font-size: 15px; outline: none; transition: border-color .2s;
+    background: #fffafa;
+  }
+  input:focus, select:focus { border-color: #d85a82; background: #fff; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  .tab-group { display: flex; gap: 8px; margin-bottom: 12px; }
+  .tab {
+    flex: 1; padding: 10px; border: 1.5px solid #f0d6dd; border-radius: 10px;
+    text-align: center; font-size: 13px; cursor: pointer; background: #fffafa;
+    transition: all .2s; user-select: none;
+  }
+  .tab.active { background: #d85a82; color: #fff; border-color: #d85a82; }
+  .hint { font-size: 12px; color: #aaa; margin-top: 6px; }
+  button.primary {
+    width: 100%; padding: 14px; background: #d85a82; color: #fff;
+    border: none; border-radius: 12px; font-size: 16px; font-weight: 500;
+    cursor: pointer; transition: background .2s; margin-top: 8px;
+  }
+  button.primary:hover:not(:disabled) { background: #c04a72; }
+  button.primary:disabled { background: #ddd; cursor: not-allowed; }
+  .result {
+    display: none; margin-top: 20px; padding: 16px;
+    background: #f8fff4; border: 1.5px solid #c8e6c9; border-radius: 12px;
+  }
+  .result.show { display: block; }
+  .result h3 { margin: 0 0 8px; color: #2e7d32; font-size: 15px; font-weight: 600; }
+  .result p { margin: 0 0 12px; font-size: 13px; color: #555; line-height: 1.6; }
+  .error {
+    display: none; margin-top: 16px; padding: 12px;
+    background: #fff3e0; border: 1.5px solid #ffcc80; border-radius: 10px;
+    color: #e65100; font-size: 13px;
+  }
+  .error.show { display: block; }
+  .download-btn {
+    display: block; width: 100%; padding: 12px; background: #4caf50; color: #fff;
+    border: none; border-radius: 10px; font-size: 14px; cursor: pointer;
+    text-decoration: none; text-align: center; font-weight: 500;
+  }
+  .footer { text-align: center; margin-top: 18px; font-size: 11px; color: #bbb; }
+  .privacy { background: #fff8e1; padding: 10px 12px; border-radius: 10px;
+    font-size: 12px; color: #795548; line-height: 1.6; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>💕 宝宝提醒</h1>
+  <div class="sub">每天给你一条贴心的问候和小知识～</div>
+
+  <div class="privacy">
+    🔒 你填写的信息会在你这台手机/电脑里直接加密，<b>不会上传任何服务器</b>。生成后只会保存到你的本地，由你决定要不要发送。
+  </div>
+
+  <div class="field">
+    <label>1. 关于预产期</label>
+    <div class="tab-group">
+      <div class="tab active" data-mode="due">我知道预产期</div>
+      <div class="tab" data-mode="week">我只知道孕周</div>
+    </div>
+    <div id="dueDateBox">
+      <input type="date" id="dueDate" required>
+      <div class="hint">医生告诉你的预产期日期</div>
+    </div>
+    <div id="weekBox" style="display:none;">
+      <input type="number" id="currentWeek" min="4" max="42" placeholder="当前孕周（4-42）">
+      <div class="hint">不知道也没关系，估个大概就行</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>2. 每天什么时候想收到？</label>
+    <input type="time" id="pushTime" value="08:00" required>
+    <div class="hint">推荐早上 8 点，伴你开启美好的一天</div>
+  </div>
+
+  <div class="field">
+    <label>3. 想被怎么称呼？（可选）</label>
+    <input type="text" id="name" placeholder="比如：小美、宝宝妈、亲爱的" maxlength="12">
+  </div>
+
+  <button class="primary" id="genBtn">生成专属配置</button>
+
+  <div class="error" id="errorBox"></div>
+
+  <div class="result" id="resultBox">
+    <h3>✓ 生成成功！</h3>
+    <p>已为你生成加密配置文件 <code>profile.enc</code>，请：<br>
+    1. 点击下方按钮下载文件<br>
+    2. 把这个文件发给设置者（你知道是谁～）</p>
+    <button class="download-btn" id="downloadBtn">📎 下载 profile.enc</button>
+  </div>
+
+  <div class="footer">© 宝宝提醒 · 私人定制</div>
+</div>
+
+<script>
+// ============ Fernet 实现（与 Python cryptography.Fernet 兼容） ============
+// Fernet 协议：version(1B=0x80) + timestamp(8B BE) + IV(16B) + ciphertext(AES-128-CBC, PKCS7) + HMAC-SHA256(32B)
+// key (urlsafe base64, 32 bytes raw) = signingKey(16B) + encKey(16B)
+
+function b64urlDecode(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf;
+}
+
+function b64urlEncode(buf) {
+  let bin = '';
+  const arr = new Uint8Array(buf);
+  for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+function concat(...arrs) {
+  let len = 0;
+  for (const a of arrs) len += a.length;
+  const out = new Uint8Array(len);
+  let off = 0;
+  for (const a of arrs) { out.set(a, off); off += a.length; }
+  return out;
+}
+
+async function fernetEncrypt(keyB64Url, plaintext) {
+  const keyBytes = b64urlDecode(keyB64Url);
+  if (keyBytes.length !== 32) throw new Error('密钥长度错误，应为 32 字节（base64 后 44 字符）');
+  const signingKey = keyBytes.slice(0, 16);
+  const encKey = keyBytes.slice(16, 32);
+
+  const iv = crypto.getRandomValues(new Uint8Array(16));
+  const ts = Math.floor(Date.now() / 1000);
+  const tsBytes = new Uint8Array(8);
+  // big-endian uint64（high 4 字节填 0，足够用到 2106 年）
+  new DataView(tsBytes.buffer).setUint32(0, 0);
+  new DataView(tsBytes.buffer).setUint32(4, ts);
+
+  const enc = new TextEncoder();
+  const ptBytes = enc.encode(plaintext);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw', encKey, { name: 'AES-CBC' }, false, ['encrypt']
+  );
+  const ctBuffer = await crypto.subtle.encrypt(
+    { name: 'AES-CBC', iv }, cryptoKey, ptBytes
+  );
+  const ct = new Uint8Array(ctBuffer);
+
+  const version = new Uint8Array([0x80]);
+  const toSign = concat(version, tsBytes, iv, ct);
+
+  const hmacKey = await crypto.subtle.importKey(
+    'raw', signingKey, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const hmacBuf = await crypto.subtle.sign('HMAC', hmacKey, toSign);
+  const hmac = new Uint8Array(hmacBuf);
+
+  const token = concat(toSign, hmac);
+  return b64urlEncode(token);
+}
+
+// ============ UI 逻辑 ============
+
+const $ = id => document.getElementById(id);
+
+let mode = 'due';
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    mode = tab.dataset.mode;
+    $('dueDateBox').style.display = mode === 'due' ? 'block' : 'none';
+    $('weekBox').style.display = mode === 'week' ? 'block' : 'none';
+  });
+});
+
+// 默认预产期 = 今天 + 280 天，作为占位提示
+(function setDefaultDate() {
+  const today = new Date();
+  const due = new Date(today.getTime() + 280 * 86400000);
+  $('dueDate').value = due.toISOString().slice(0, 10);
+})();
+
+function showError(msg) {
+  const box = $('errorBox');
+  box.textContent = '⚠️ ' + msg;
+  box.classList.add('show');
+  setTimeout(() => box.classList.remove('show'), 5000);
+}
+
+function calcDueFromWeek(week) {
+  const days = (40 - week) * 7;
+  const due = new Date(Date.now() + days * 86400000);
+  return due.toISOString().slice(0, 10);
+}
+
+let lastBlob = null;
+
+$('genBtn').addEventListener('click', async () => {
+  $('errorBox').classList.remove('show');
+  $('resultBox').classList.remove('show');
+
+  // 从 URL 参数取密钥
+  const params = new URLSearchParams(location.search);
+  const key = params.get('k');
+  if (!key) {
+    showError('链接里缺少密钥参数 k=...，请联系发链接给你的人。');
+    return;
+  }
+
+  let dueDate;
+  if (mode === 'due') {
+    dueDate = $('dueDate').value;
+    if (!dueDate) { showError('请选择预产期'); return; }
+    const d = new Date(dueDate);
+    if (d < new Date(new Date().toDateString())) {
+      showError('预产期不能早于今天哦');
+      return;
+    }
+  } else {
+    const week = parseInt($('currentWeek').value, 10);
+    if (!week || week < 4 || week > 42) {
+      showError('请输入 4-42 之间的孕周');
+      return;
+    }
+    dueDate = calcDueFromWeek(week);
+  }
+
+  const pushTime = $('pushTime').value;
+  if (!pushTime) { showError('请选择推送时间'); return; }
+
+  const name = ($('name').value || '亲爱的').trim();
+
+  const profile = {
+    due_date: dueDate,
+    push_time: pushTime,
+    name: name,
+    created_at: new Date().toISOString().slice(0, 19),
+  };
+
+  $('genBtn').disabled = true;
+  $('genBtn').textContent = '加密中…';
+
+  try {
+    const token = await fernetEncrypt(key.trim(), JSON.stringify(profile));
+    // profile.enc 文件内容就是 token（urlsafe base64 字符串）
+    lastBlob = new Blob([token], { type: 'application/octet-stream' });
+    $('resultBox').classList.add('show');
+    $('genBtn').textContent = '重新生成';
+  } catch (e) {
+    showError('加密失败：' + e.message);
+    $('genBtn').textContent = '生成专属配置';
+  } finally {
+    $('genBtn').disabled = false;
+  }
+});
+
+$('downloadBtn').addEventListener('click', () => {
+  if (!lastBlob) return;
+  const url = URL.createObjectURL(lastBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'profile.enc';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+});
+</script>
+</body>
+</html>
