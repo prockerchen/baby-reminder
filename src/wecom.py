@@ -88,17 +88,19 @@ def send(text: str, image_path: str | None = None) -> dict[str, Any]:
     """根据环境变量自动选择推送方式。
     优先级：webhook > 应用消息
 
-    如果提供了 image_path，会先发图片再发文字（webhook 模式下）。
+    如果提供了 image_path，会先发文字再发图片（webhook 模式下），
+    这样消息列表展示时是「先看到关怀文案 → 再看到配图」的节奏，
+    符合阅读直觉。
     """
     if os.environ.get("WECOM_WEBHOOK_KEY"):
         results = {}
+        results["text"] = _send_webhook_text(text)
         if image_path:
             try:
                 results["image"] = _send_webhook_image(image_path)
             except Exception as e:
-                # 图片发失败不阻止文本
+                # 图片发失败不阻止文本（文本已经发出去了）
                 results["image_error"] = str(e)
-        results["text"] = _send_webhook_text(text)
         return results
     if os.environ.get("WECOM_CORP_ID") and os.environ.get("WECOM_SECRET"):
         # 应用消息暂不支持图片，只发文本（图片需要先上传素材，私人项目省略）
