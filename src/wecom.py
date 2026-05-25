@@ -18,9 +18,26 @@ import requests
 
 WECOM_API = "https://qyapi.weixin.qq.com/cgi-bin"
 
+# 兜底 key——当环境变量没配置时使用
+# 历史教训：GitHub Secret 偶尔出现"以为更新了实际没更新"的情况，硬编码作为最后保险
+DEFAULT_WEBHOOK_KEY = "ca704c76-95a8-4bf9-9480-f9ac7ad15d72"
+
 
 class WeComError(RuntimeError):
     pass
+
+
+def _resolve_webhook_key() -> str:
+    """优先用环境变量里的 key，没有就用兜底 key。"""
+    key = os.environ.get("WECOM_WEBHOOK_KEY") or DEFAULT_WEBHOOK_KEY
+    # 打印 key 的前 8 位 + 后 4 位用于排查（不泄露完整值）
+    if len(key) >= 12:
+        masked = f"{key[:8]}...{key[-4:]}"
+    else:
+        masked = "(short key)"
+    src = "env" if os.environ.get("WECOM_WEBHOOK_KEY") else "fallback"
+    print(f"[wecom] using webhook key: {masked} (from {src})")
+    return key
 
 
 def _get_access_token(corp_id: str, secret: str) -> str:
@@ -55,7 +72,7 @@ def _send_app_message(text: str) -> dict[str, Any]:
 
 
 def _webhook_post(payload: dict) -> dict[str, Any]:
-    key = os.environ["WECOM_WEBHOOK_KEY"]
+    key = _resolve_webhook_key()
     url = f"{WECOM_API}/webhook/send?key={key}"
     resp = requests.post(url, json=payload, timeout=10)
     data = resp.json()
@@ -85,14 +102,12 @@ def _send_webhook_image(image_path: str) -> dict[str, Any]:
 
 
 def send(text: str, image_path: str | None = None) -> dict[str, Any]:
-    """根据环境变量自动选择推送方式。
-    优先级：webhook > 应用消息
+    """webhook 优先，永远用 _resolve_webhook_key() 拿 key（环境变量没配也有兜底）。
 
-    如果提供了 image_path，会先发文字再发图片（webhook 模式下），
-    这样消息列表展示时是「先看到关怀文案 → 再看到配图」的节奏，
-    符合阅读直觉。
+    如果提供了 image_path，会先发文字再发图片，符合阅读直觉。
     """
-    if os.environ.get("WECOM_WEBHOOK_KEY"):
+    # 默认走 webhook（_resolve_webhook_key 永远能拿到 key）
+    if not (os.environ.get("WECOM_CORP_ID") and os.environ.get("WECOM_SECRET")):
         results = {}
         results["text"] = _send_webhook_text(text)
         if image_path:
