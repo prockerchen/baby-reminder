@@ -30,9 +30,9 @@ from src.wecom import send
 CST = timezone(timedelta(hours=8))
 LAST_SENT_FILE = Path(__file__).resolve().parent / "last_sent.txt"
 
-# 固定每天 09:30 开始可发（北京时间）
+# 固定每天 09:00 开始可发（北京时间）
 PUSH_HOUR = 9
-PUSH_MINUTE = 30
+PUSH_MINUTE = 0
 
 
 def should_send_today(force: bool) -> tuple[bool, str]:
@@ -52,9 +52,9 @@ def should_send_today(force: bool) -> tuple[bool, str]:
     target_dt = now_cst.replace(hour=PUSH_HOUR, minute=PUSH_MINUTE, second=0, microsecond=0)
 
     if now_cst >= target_dt:
-        return True, f"[gate] 当前 {now_cst:%H:%M} >= 设定 09:30，且今天还没发，发送"
+        return True, f"[gate] 当前 {now_cst:%H:%M} >= 设定 09:00，且今天还没发，发送"
     else:
-        return False, f"[gate] 当前 {now_cst:%H:%M} < 设定 09:30，等会再发"
+        return False, f"[gate] 当前 {now_cst:%H:%M} < 设定 09:00，等会再发"
 
 
 def mark_sent_today():
