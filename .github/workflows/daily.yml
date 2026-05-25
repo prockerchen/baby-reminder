@@ -5,8 +5,11 @@ env:
 
 on:
   schedule:
-    # 每 30 分钟跑一次（GitHub 高峰期可能跳过 cron 的整点，缩短间隔以提高命中率）
-    - cron: '*/30 * * * *'
+    # 北京时间 9:30 / 10:00 / 10:30 各跑一次（UTC = CST - 8h），避开 GitHub 整点高峰
+    # 每天最多发一次（main.py 里的 last_sent.txt 防重发），后两次是补救
+    - cron: '30 1 * * *'   # CST 09:30
+    - cron: '0 2 * * *'    # CST 10:00（如果 9:30 被 GitHub 跳过，这个补上）
+    - cron: '30 2 * * *'   # CST 10:30（再补一次保险）
   workflow_dispatch:
     inputs:
       force:

@@ -8,9 +8,9 @@
 - FORCE=true：忽略时间检查，立即发送（手动触发时使用）
 
 时间网关 + 防重发：
-- 每天只发一次（用 last_sent.txt 记录）
-- 当前北京时间小时 == profile.push_time 的小时，才会发
-- 提供 30 分钟容差：如果当天 push 时间已经过去但还没发，补发
+- 固定每天 09:30（北京时间）开始发，直到当天发出为止
+- 用 last_sent.txt 记录最后发送日期，当天再触发会被跳过
+- workflow 在 9:30 / 10:00 / 10:30 各跑一次作为补救
 """
 from __future__ import annotations
 
@@ -30,8 +30,12 @@ from src.wecom import send
 CST = timezone(timedelta(hours=8))
 LAST_SENT_FILE = Path(__file__).resolve().parent / "last_sent.txt"
 
+# 固定每天 09:30 开始可发（北京时间）
+PUSH_HOUR = 9
+PUSH_MINUTE = 30
 
-def should_send_today(push_time: str, force: bool) -> tuple[bool, str]:
+
+def should_send_today(force: bool) -> tuple[bool, str]:
     """判断是否应该现在发送。返回 (是否发送, 原因日志)。"""
     if force:
         return True, "[gate] FORCE=true，强制发送"
@@ -45,16 +49,12 @@ def should_send_today(push_time: str, force: bool) -> tuple[bool, str]:
         if last == today_str:
             return False, f"[gate] 今天 {today_str} 已经发过了，跳过"
 
-    target_hour = int(push_time.split(":")[0])
-    target_minute = int(push_time.split(":")[1]) if ":" in push_time else 0
-
-    # 当前时间是否 >= 用户设定的发送时间（同一天）
-    target_dt = now_cst.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+    target_dt = now_cst.replace(hour=PUSH_HOUR, minute=PUSH_MINUTE, second=0, microsecond=0)
 
     if now_cst >= target_dt:
-        return True, f"[gate] 当前 {now_cst:%H:%M} >= 设定 {push_time}，且今天还没发，发送"
+        return True, f"[gate] 当前 {now_cst:%H:%M} >= 设定 09:30，且今天还没发，发送"
     else:
-        return False, f"[gate] 当前 {now_cst:%H:%M} < 设定 {push_time}，等会再发"
+        return False, f"[gate] 当前 {now_cst:%H:%M} < 设定 09:30，等会再发"
 
 
 def mark_sent_today():
@@ -75,9 +75,8 @@ def main() -> int:
         return 1
 
     force = os.environ.get("FORCE", "").lower() == "true"
-    push_time = profile.get("push_time", "08:00")
 
-    should, reason = should_send_today(push_time, force)
+    should, reason = should_send_today(force)
     print(reason)
     if not should:
         return 0
