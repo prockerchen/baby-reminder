@@ -5,8 +5,8 @@ env:
 
 on:
   schedule:
-    # 每小时第 5 分钟跑一次（避开 GitHub 整点高峰，触发更准时）
-    - cron: '5 * * * *'
+    # 每 30 分钟跑一次（GitHub 高峰期可能跳过 cron 的整点，缩短间隔以提高命中率）
+    - cron: '*/30 * * * *'
   workflow_dispatch:
     inputs:
       force:
@@ -17,6 +17,8 @@ on:
 jobs:
   send:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 允许 last_sent.txt 提交回仓库
     steps:
       - uses: actions/checkout@v4
 
@@ -30,23 +32,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Check push time (skip unless current hour matches profile)
-        id: gate
-        if: github.event.inputs.force != 'true'
-        env:
-          BABY_PROFILE_KEY: ${{ secrets.BABY_PROFILE_KEY }}
-        run: |
-          python check_time.py
-        continue-on-error: true
-
       - name: Send daily message
-        if: github.event.inputs.force == 'true' || steps.gate.outcome == 'success'
         env:
           BABY_PROFILE_KEY: ${{ secrets.BABY_PROFILE_KEY }}
-          WECOM_CORP_ID: ${{ secrets.WECOM_CORP_ID }}
-          WECOM_AGENT_ID: ${{ secrets.WECOM_AGENT_ID }}
-          WECOM_SECRET: ${{ secrets.WECOM_SECRET }}
-          WECOM_TOUSER: ${{ secrets.WECOM_TOUSER }}
           WECOM_WEBHOOK_KEY: ${{ secrets.WECOM_WEBHOOK_KEY }}
+          FORCE: ${{ github.event.inputs.force }}
         run: |
+          # 在 main.py 内部根据 FORCE 决定是否走时间网关
           python main.py
