@@ -1,28 +1,23 @@
-name: Daily Baby Reminder
+name: Daily Baby Reminder (manual only)
+
+# Schedule DISABLED - now using CodeBuddy local automation as primary trigger.
+# This workflow is kept for manual dispatch only (emergency/testing).
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
-  schedule:
-    # 北京时间 9:00 / 9:30 / 10:00 / 10:30 各跑一次（UTC = CST - 8h）
-    # 每天最多发一次（main.py 里的 last_sent.txt 防重发），后几次是补救
-    - cron: '0 1 * * *'    # CST 09:00 主触发
-    - cron: '30 1 * * *'   # CST 09:30 补救
-    - cron: '0 2 * * *'    # CST 10:00 补救
-    - cron: '30 2 * * *'   # CST 10:30 兜底
+  # schedule: DISABLED (unreliable for private repos on free tier)
   workflow_dispatch:
     inputs:
       force:
         description: '忽略时间检查，直接推送（用于手动测试）'
         required: false
-        default: 'false'
+        default: 'true'
 
 jobs:
   send:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write   # 允许 last_sent.txt 提交回仓库
     steps:
       - uses: actions/checkout@v4
 
@@ -39,8 +34,5 @@ jobs:
       - name: Send daily message
         env:
           BABY_PROFILE_KEY: ${{ secrets.BABY_PROFILE_KEY }}
-          WECOM_WEBHOOK_KEY: ${{ secrets.WECOM_WEBHOOK_KEY }}
           FORCE: ${{ github.event.inputs.force }}
-        run: |
-          # 在 main.py 内部根据 FORCE 决定是否走时间网关
-          python main.py
+        run: python main.py
